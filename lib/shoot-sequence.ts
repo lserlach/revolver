@@ -8,8 +8,9 @@ interface ShootApi {
   beginSpin: () => boolean;
   pull: () => PullResult;
   endAnimation: () => void;
-  getSpinId: () => number;
+  getShotId: () => number;
   hasPendingShot: () => boolean;
+  isDead: () => boolean;
 }
 
 function wait(ms: number): Promise<void> {
@@ -23,17 +24,23 @@ export async function runShootSequence(api: ShootApi): Promise<void> {
     return;
   }
 
-  const spinId = api.getSpinId();
+  const shotId = api.getShotId();
   await unlockSounds();
   const spinDuration = await playSpin();
   await wait(spinDuration * 1000 + INTRIGUE_DELAY_MS);
 
-  if (api.getSpinId() !== spinId) {
+  if (api.getShotId() !== shotId) {
+    api.endAnimation();
     return;
   }
 
   if (!api.hasPendingShot()) {
     api.endAnimation();
+    if (api.isDead()) {
+      void playBang();
+      return;
+    }
+    void playClick();
     return;
   }
 
@@ -55,8 +62,9 @@ export function createLiarShootApi(): ShootApi {
     beginSpin: () => useRevolverStore.getState().beginSpin(),
     pull: () => useRevolverStore.getState().pull(),
     endAnimation: () => useRevolverStore.getState().endAnimation(),
-    getSpinId: () => useRevolverStore.getState().spinId,
+    getShotId: () => useRevolverStore.getState().spinId,
     hasPendingShot: () => useRevolverStore.getState().pendingShot,
+    isDead: () => useRevolverStore.getState().isLocked,
   };
 }
 
@@ -65,7 +73,8 @@ export function createPokerShootApi(): ShootApi {
     beginSpin: () => usePokerStore.getState().beginSpin(),
     pull: () => usePokerStore.getState().pull(),
     endAnimation: () => usePokerStore.getState().endAnimation(),
-    getSpinId: () => usePokerStore.getState().spinId,
+    getShotId: () => usePokerStore.getState().shotNonce,
     hasPendingShot: () => usePokerStore.getState().pendingShot,
+    isDead: () => usePokerStore.getState().isLocked,
   };
 }

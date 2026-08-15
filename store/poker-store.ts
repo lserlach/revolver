@@ -6,8 +6,10 @@ export const POKER_CHAMBER_COUNT = 8;
 
 interface PokerProgress {
   bulletCount: number;
+  loadedForShot: number;
   isLocked: boolean;
   pendingShot: boolean;
+  shotNonce: number;
   spinId: number;
 }
 
@@ -21,13 +23,18 @@ interface PokerState extends PokerProgress {
   endAnimation: () => void;
 }
 
-function createFreshState(): Omit<PokerProgress, "spinId"> & { isAnimating: boolean } {
+function createFreshState(): Omit<PokerProgress, "spinId" | "shotNonce"> & { isAnimating: boolean } {
   return {
     bulletCount: 0,
+    loadedForShot: 0,
     isLocked: false,
     pendingShot: false,
     isAnimating: false,
   };
+}
+
+export function rollPokerChamber(loadedCount: number, chamber = Math.floor(Math.random() * POKER_CHAMBER_COUNT)): boolean {
+  return loadedCount > 0 && chamber < Math.min(loadedCount, POKER_CHAMBER_COUNT);
 }
 
 export const usePokerStore = create<PokerState>()(
@@ -36,6 +43,7 @@ export const usePokerStore = create<PokerState>()(
       ...createFreshState(),
       chamberCount: POKER_CHAMBER_COUNT,
       spinId: 0,
+      shotNonce: 0,
 
       addBullet: () => {
         const { isLocked, isAnimating, bulletCount } = get();
@@ -47,22 +55,26 @@ export const usePokerStore = create<PokerState>()(
       },
 
       beginSpin: () => {
-        const { isLocked, isAnimating } = get();
+        const { isLocked, isAnimating, bulletCount } = get();
         if (isLocked || isAnimating) {
           return false;
         }
-        set({ isAnimating: true, pendingShot: true });
+        set({
+          isAnimating: true,
+          pendingShot: true,
+          loadedForShot: bulletCount,
+          shotNonce: get().shotNonce + 1,
+        });
         return true;
       },
 
       pull: () => {
-        const { isLocked, bulletCount, pendingShot } = get();
+        const { isLocked, pendingShot, loadedForShot } = get();
         if (isLocked || !pendingShot) {
           return "blocked";
         }
 
-        const chance = bulletCount / POKER_CHAMBER_COUNT;
-        const isLive = bulletCount > 0 && Math.random() < chance;
+        const isLive = rollPokerChamber(loadedForShot);
 
         if (isLive) {
           set({
@@ -75,6 +87,7 @@ export const usePokerStore = create<PokerState>()(
 
         set({
           bulletCount: 0,
+          loadedForShot: 0,
           isAnimating: false,
           pendingShot: false,
           spinId: get().spinId + 1,
@@ -86,6 +99,7 @@ export const usePokerStore = create<PokerState>()(
         set({
           ...createFreshState(),
           spinId: get().spinId + 1,
+          shotNonce: get().shotNonce + 1,
         });
       },
 
@@ -97,8 +111,10 @@ export const usePokerStore = create<PokerState>()(
       name: "liars-bar-poker",
       partialize: (state) => ({
         bulletCount: state.bulletCount,
+        loadedForShot: state.loadedForShot,
         isLocked: state.isLocked,
         pendingShot: state.pendingShot,
+        shotNonce: state.shotNonce,
         spinId: state.spinId,
       }),
       merge: (persisted, current) => {
@@ -106,8 +122,10 @@ export const usePokerStore = create<PokerState>()(
         return {
           ...current,
           bulletCount: Math.min(Math.max(value.bulletCount ?? 0, 0), POKER_CHAMBER_COUNT),
+          loadedForShot: Math.min(Math.max(value.loadedForShot ?? 0, 0), POKER_CHAMBER_COUNT),
           isLocked: Boolean(value.isLocked),
           pendingShot: Boolean(value.pendingShot),
+          shotNonce: value.shotNonce ?? 0,
           spinId: value.spinId ?? 0,
           isAnimating: false,
         };
