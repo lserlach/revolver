@@ -45,7 +45,6 @@ function setPlaybackSession(): void {
 function createAudio(url: string, loop = false): HTMLAudioElement {
   const audio = new Audio(url);
   audio.preload = "auto";
-  audio.playsInline = true;
   audio.setAttribute("playsinline", "true");
   audio.setAttribute("webkit-playsinline", "true");
   audio.loop = loop;
