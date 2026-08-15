@@ -28,3 +28,9 @@
 .button:active {
   transform: translateY(1px);
 }
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  transform: none;
+}

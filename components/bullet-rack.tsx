@@ -4,52 +4,54 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import styles from "./bullet-rack.module.css";
 
 interface BulletRackProps {
-  usedChambers: boolean[];
+  loadedChambers: boolean[];
   isSpinning: boolean;
   spinId: number;
 }
 
-function Bullet({ used, index }: { used: boolean; index: number }) {
+function Bullet({ loaded, index, step }: { loaded: boolean; index: number; step: number }) {
   return (
     <div
-      className={`${styles.slot} ${used ? styles.spent : ""}`}
-      style={{ "--angle": `${index * 60}deg` } as CSSProperties}
+      className={`${styles.slot} ${loaded ? "" : styles.empty}`}
+      style={{ "--angle": `${index * step}deg` } as CSSProperties}
     >
       <span className={styles.chamber} aria-hidden="true">
-        {used ? null : <span className={styles.slug} />}
+        {loaded ? <span className={styles.slug} /> : null}
       </span>
     </div>
   );
 }
 
-export function BulletRack({ usedChambers, isSpinning, spinId }: BulletRackProps) {
+export function BulletRack({ loadedChambers, isSpinning, spinId }: BulletRackProps) {
   const [angle, setAngle] = useState(0);
   const restAngleRef = useRef(0);
+  const step = 360 / Math.max(loadedChambers.length, 1);
 
   useEffect(() => {
     restAngleRef.current = 0;
     setAngle(0);
-  }, [spinId]);
+  }, [spinId, loadedChambers.length]);
 
   useEffect(() => {
     if (!isSpinning) {
       return;
     }
 
-    const nextAngle = restAngleRef.current + 720 + 60;
+    const nextAngle = restAngleRef.current + 720 + step;
     restAngleRef.current = nextAngle;
     setAngle(nextAngle);
-  }, [isSpinning]);
+  }, [isSpinning, step]);
 
   return (
-    <div className={styles.rack} aria-label="Барабан" role="img">
-      <div
-        className={styles.rotor}
-        style={{ transform: `rotate(${angle}deg)` }}
-      >
+    <div
+      className={`${styles.rack} ${loadedChambers.length === 8 ? styles.wide : ""}`}
+      aria-label="Барабан"
+      role="img"
+    >
+      <div className={styles.rotor} style={{ transform: `rotate(${angle}deg)` }}>
         <span className={styles.hub} aria-hidden="true" />
-        {usedChambers.map((used, index) => (
-          <Bullet key={index} used={used} index={index} />
+        {loadedChambers.map((loaded, index) => (
+          <Bullet key={index} loaded={loaded} index={index} step={step} />
         ))}
       </div>
     </div>
