@@ -16,6 +16,7 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { DeathOverlay } from "./death-overlay";
 import { ModeSwitch } from "./mode-switch";
 import { OrientationGuard } from "./orientation-guard";
+import { PokerHelp } from "./poker-help";
 import { ResetButton } from "./reset-button";
 import { Revolver } from "./revolver";
 import styles from "./game-screen.module.css";
@@ -59,9 +60,11 @@ export function GameScreen() {
 
   const [showDeath, setShowDeath] = useState(false);
   const [confirmShot, setConfirmShot] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   useEffect(() => {
     setConfirmShot(false);
+    setShowHelp(false);
   }, [mode]);
 
   useEffect(() => {
@@ -149,6 +152,18 @@ export function GameScreen() {
       <main className={`${styles.table} ${isLocked ? styles.dead : ""}`}>
         <header className={styles.top}>
           <ModeSwitch />
+          {isPoker ? (
+            <button
+              className={styles.help}
+              type="button"
+              aria-label="Комбинации покера"
+              onClick={() => {
+                setShowHelp(true);
+              }}
+            >
+              ?
+            </button>
+          ) : null}
         </header>
 
         <section className={styles.stage}>
@@ -176,6 +191,14 @@ export function GameScreen() {
             </>
           )}
         </footer>
+
+        {showHelp ? (
+          <PokerHelp
+            onClose={() => {
+              setShowHelp(false);
+            }}
+          />
+        ) : null}
 
         {confirmShot ? (
           <ConfirmDialog

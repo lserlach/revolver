@@ -1,0 +1,60 @@
+.card {
+  position: relative;
+  display: block;
+  width: 28px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: #f4f4f4;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.red {
+  color: #c62828;
+}
+
+.black {
+  color: #161616;
+}
+
+.dimmed {
+  opacity: 0.28;
+}
+
+.rank {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+
+.ten {
+  left: 2px;
+  font-size: 7px;
+}
+
+.suit {
+  position: absolute;
+  right: 3px;
+  bottom: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+@media (max-height: 420px) {
+  .card {
+    width: 24px;
+    height: 32px;
+  }
+
+  .rank {
+    font-size: 8px;
+  }
+
+  .suit {
+    font-size: 11px;
+  }
+}
