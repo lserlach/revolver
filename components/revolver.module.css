@@ -1,0 +1,32 @@
+.trigger {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  width: min(68vw, 720px);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 8px;
+  border-radius: 12px;
+}
+
+.trigger:disabled {
+  cursor: default;
+}
+
+.locked {
+  filter: saturate(0.55) brightness(0.72);
+}
+
+.photo {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none;
+}

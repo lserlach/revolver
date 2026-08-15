@@ -1,0 +1,98 @@
+.rack {
+  list-style: none;
+  position: relative;
+  width: 168px;
+  height: 168px;
+  flex-shrink: 0;
+}
+
+.rotor {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #2a2a2a;
+  border: 2px solid #3a3a3a;
+  box-shadow: none;
+  transition: transform 1.93s cubic-bezier(0.12, 0.78, 0.18, 1);
+  will-change: transform;
+}
+
+.hub {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 34px;
+  height: 34px;
+  margin: -17px 0 0 -17px;
+  border-radius: 50%;
+  background: #4a4a4a;
+  border: 2px solid #5a5a5a;
+  box-shadow: none;
+}
+
+.slot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 36px;
+  height: 36px;
+  margin: -18px 0 0 -18px;
+  transform: rotate(var(--angle)) translateY(-58px);
+}
+
+.chamber {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #111111;
+  border: 1px solid #2f2f2f;
+  box-shadow: none;
+}
+
+.slug {
+  display: block;
+  width: 22px;
+  height: 22px;
+  margin: 6px auto 0;
+  border-radius: 50%;
+  background: #9a9a9a;
+  box-shadow: none;
+}
+
+.spent .chamber {
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rotor {
+    transition-duration: 0.01ms;
+  }
+}
+
+@media (max-height: 420px) {
+  .rack {
+    width: 132px;
+    height: 132px;
+  }
+
+  .slot {
+    width: 28px;
+    height: 28px;
+    margin: -14px 0 0 -14px;
+    transform: rotate(var(--angle)) translateY(-46px);
+  }
+
+  .hub {
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+  }
+
+  .slug {
+    width: 16px;
+    height: 16px;
+    margin-top: 5px;
+  }
+}

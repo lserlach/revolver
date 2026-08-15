@@ -1,0 +1,75 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(139, 42, 28, 0.28), transparent 55%),
+    rgba(10, 7, 6, 0.94);
+  backdrop-filter: blur(8px);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  max-width: 280px;
+}
+
+.phone {
+  width: 42px;
+  height: 68px;
+  border: 2px solid var(--brass);
+  border-radius: 8px;
+  position: relative;
+  animation: tilt 1.6s ease-in-out infinite;
+}
+
+.phone::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  width: 10px;
+  height: 3px;
+  transform: translateX(-50%);
+  background: var(--brass);
+  border-radius: 99px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  line-height: 1.1;
+  color: var(--bone);
+}
+
+.hint {
+  font-size: 0.95rem;
+  color: var(--brass-dim);
+}
+
+@keyframes tilt {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  45% {
+    transform: rotate(90deg);
+  }
+  55% {
+    transform: rotate(90deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .phone {
+    animation: none;
+    transform: rotate(90deg);
+  }
+}
