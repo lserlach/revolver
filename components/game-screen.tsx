@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { lockLandscape } from "@/lib/orientation";
-import { unlockSounds } from "@/lib/sounds";
-import { useRevolverStore } from "@/store/revolver-store";
+import { playBang, playClick, unlockSounds } from "@/lib/sounds";
+import { resolvePendingShot, useRevolverStore } from "@/store/revolver-store";
 import { BulletRack } from "./bullet-rack";
 import { DeathOverlay } from "./death-overlay";
 import { OrientationGuard } from "./orientation-guard";
@@ -35,6 +35,34 @@ export function GameScreen() {
   }, [isLocked, spinId]);
 
   useEffect(() => {
+    const finishPendingShot = () => {
+      const result = resolvePendingShot();
+      if (result === "bang") {
+        void playBang();
+      }
+      if (result === "click") {
+        void playClick();
+      }
+    };
+
+    if (useRevolverStore.persist.hasHydrated()) {
+      finishPendingShot();
+    }
+
+    const unsubscribe = useRevolverStore.persist.onFinishHydration(() => {
+      finishPendingShot();
+    });
+
+    const onVisible = () => {
+      if (document.visibilityState === "hidden") {
+        return;
+      }
+      finishPendingShot();
+    };
+
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("pageshow", onVisible);
+
     const warm = () => {
       lockLandscape();
       void unlockSounds();
@@ -42,6 +70,9 @@ export function GameScreen() {
 
     window.addEventListener("pointerdown", warm, { once: true });
     return () => {
+      unsubscribe();
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("pageshow", onVisible);
       window.removeEventListener("pointerdown", warm);
     };
   }, []);

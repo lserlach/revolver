@@ -1,88 +1,143 @@
-interface SoundBuffers {
-  click: AudioBuffer;
-  bang: AudioBuffer;
-  spin: AudioBuffer;
+const SOUND_URLS = {
+  click: "/sounds/click.mp3",
+  bang: "/sounds/bang.mp3",
+  spin: "/sounds/spin.mp3",
+} as const;
+
+const SOUND_DURATION: Record<keyof typeof SOUND_URLS, number> = {
+  click: 2.3,
+  bang: 0.86,
+  spin: 1.93,
+};
+
+const SILENT_WAV =
+  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
+
+interface AudioSessionLike {
+  type: string;
 }
 
-let audioContext: AudioContext | null = null;
-let buffers: SoundBuffers | null = null;
-let loading: Promise<SoundBuffers> | null = null;
+interface NavigatorWithAudioSession extends Navigator {
+  audioSession?: AudioSessionLike;
+}
 
-function getContext(): AudioContext {
-  if (!audioContext) {
-    audioContext = new AudioContext();
+let keepAlive: HTMLAudioElement | null = null;
+let watching = false;
+const templates: Partial<Record<keyof typeof SOUND_URLS, HTMLAudioElement>> = {};
+
+function setPlaybackSession(): void {
+  const session = (navigator as NavigatorWithAudioSession).audioSession;
+  if (session) {
+    session.type = "playback";
   }
-  return audioContext;
-}
 
-function silentBuffer(ctx: AudioContext, duration: number): AudioBuffer {
-  return ctx.createBuffer(1, Math.max(1, Math.floor(ctx.sampleRate * duration)), ctx.sampleRate);
-}
-
-async function decodeFile(ctx: AudioContext, url: string): Promise<AudioBuffer | null> {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      return null;
+  if (navigator.mediaSession) {
+    navigator.mediaSession.playbackState = "playing";
+    if (!navigator.mediaSession.metadata) {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: "Револьвер",
+        artist: "Liars Bar",
+      });
     }
-    const bytes = await response.arrayBuffer();
-    return await ctx.decodeAudioData(bytes.slice(0));
-  } catch {
-    return null;
   }
 }
 
-async function loadOne(ctx: AudioContext, url: string, fallbackDuration: number): Promise<AudioBuffer> {
-  return (await decodeFile(ctx, url)) ?? silentBuffer(ctx, fallbackDuration);
+function createAudio(url: string, loop = false): HTMLAudioElement {
+  const audio = new Audio(url);
+  audio.preload = "auto";
+  audio.playsInline = true;
+  audio.setAttribute("playsinline", "true");
+  audio.setAttribute("webkit-playsinline", "true");
+  audio.loop = loop;
+  return audio;
 }
 
-async function loadBuffers(): Promise<SoundBuffers> {
-  const ctx = getContext();
-  const [click, bang, spin] = await Promise.all([
-    loadOne(ctx, "/sounds/click.mp3", 0.2),
-    loadOne(ctx, "/sounds/bang.mp3", 0.8),
-    loadOne(ctx, "/sounds/spin.mp3", 1.9),
-  ]);
-  return { click, bang, spin };
+function ensureKeepAlive(): HTMLAudioElement {
+  if (!keepAlive) {
+    keepAlive = createAudio(SILENT_WAV, true);
+    keepAlive.volume = 0.01;
+    keepAlive.addEventListener("pause", () => {
+      if (document.visibilityState === "visible") {
+        void keepAlive?.play().catch(() => undefined);
+      }
+    });
+  }
+  return keepAlive;
+}
+
+async function startKeepAlive(): Promise<void> {
+  const audio = ensureKeepAlive();
+  try {
+    await audio.play();
+  } catch {
+    // First gesture will retry via unlockSounds.
+  }
+}
+
+function preloadTemplates(): void {
+  (Object.keys(SOUND_URLS) as Array<keyof typeof SOUND_URLS>).forEach((key) => {
+    if (!templates[key]) {
+      const audio = createAudio(SOUND_URLS[key]);
+      audio.load();
+      templates[key] = audio;
+    }
+  });
 }
 
 export async function unlockSounds(): Promise<void> {
-  const ctx = getContext();
-  if (ctx.state === "suspended") {
-    await ctx.resume();
-  }
-  if (!loading) {
-    loading = loadBuffers().then((loaded) => {
-      buffers = loaded;
-      return loaded;
-    });
-  }
-  await loading;
+  setPlaybackSession();
+  preloadTemplates();
+  await startKeepAlive();
 }
 
-function playBuffer(buffer: AudioBuffer, gainValue: number): number {
-  const ctx = getContext();
-  const source = ctx.createBufferSource();
-  const gain = ctx.createGain();
-  source.buffer = buffer;
-  gain.gain.value = gainValue;
-  source.connect(gain);
-  gain.connect(ctx.destination);
-  source.start();
-  return buffer.duration;
+export function watchSoundSession(): void {
+  if (watching || typeof window === "undefined") {
+    return;
+  }
+
+  watching = true;
+
+  const resume = () => {
+    if (document.visibilityState === "hidden") {
+      return;
+    }
+    void unlockSounds();
+  };
+
+  document.addEventListener("visibilitychange", resume);
+  window.addEventListener("pageshow", resume);
+  window.addEventListener("focus", resume);
+  window.addEventListener("orientationchange", resume);
+}
+
+function playFile(key: keyof typeof SOUND_URLS): number {
+  setPlaybackSession();
+  void startKeepAlive();
+
+  const audio = createAudio(SOUND_URLS[key]);
+  audio.currentTime = 0;
+  void audio.play().catch(() => {
+    const fallback = templates[key];
+    if (fallback) {
+      fallback.currentTime = 0;
+      void fallback.play().catch(() => undefined);
+    }
+  });
+
+  return SOUND_DURATION[key];
 }
 
 export async function playClick(): Promise<number> {
   await unlockSounds();
-  return playBuffer(buffers?.click ?? silentBuffer(getContext(), 0.2), 1);
+  return playFile("click");
 }
 
 export async function playBang(): Promise<number> {
   await unlockSounds();
-  return playBuffer(buffers?.bang ?? silentBuffer(getContext(), 0.8), 1);
+  return playFile("bang");
 }
 
 export async function playSpin(): Promise<number> {
   await unlockSounds();
-  return playBuffer(buffers?.spin ?? silentBuffer(getContext(), 1.9), 1);
+  return playFile("spin");
 }

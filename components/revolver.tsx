@@ -34,6 +34,11 @@ export function Revolver() {
       return;
     }
 
+    if (!useRevolverStore.getState().pendingShot) {
+      endAnimation();
+      return;
+    }
+
     const result = pull();
     endAnimation();
 
