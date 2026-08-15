@@ -74,8 +74,10 @@ export const usePokerStore = create<PokerState>()(
         }
 
         set({
+          bulletCount: 0,
           isAnimating: false,
           pendingShot: false,
+          spinId: get().spinId + 1,
         });
         return "click";
       },
