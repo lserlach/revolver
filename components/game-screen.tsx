@@ -14,6 +14,7 @@ import { BulletRack } from "./bullet-rack";
 import { ConfirmDialog } from "./confirm-dialog";
 import { DeathOverlay } from "./death-overlay";
 import { ModeSwitch } from "./mode-switch";
+import { DiceBoard } from "./dice-board";
 import { PokerHelp } from "./poker-help";
 import { ResetButton } from "./reset-button";
 import { Revolver } from "./revolver";
@@ -49,8 +50,9 @@ export function GameScreen() {
   const resetPoker = usePokerStore((state) => state.reset);
 
   const isPoker = mode === "poker";
-  const isLocked = isPoker ? pokerLocked : liarLocked;
-  const isAnimating = isPoker ? pokerAnimating : liarAnimating;
+  const isDice = mode === "dice";
+  const isLocked = isPoker ? pokerLocked : mode === "liar" ? liarLocked : false;
+  const isAnimating = isPoker ? pokerAnimating : mode === "liar" ? liarAnimating : false;
   const spinId = isPoker ? pokerSpinId : liarSpinId;
   const loadedChambers = isPoker
     ? Array.from({ length: POKER_CHAMBER_COUNT }, (_, index) => index < bulletCount)
@@ -164,31 +166,37 @@ export function GameScreen() {
         ) : null}
       </header>
 
-      <section className={styles.stage}>
-        <Revolver isLocked={isLocked} isAnimating={isAnimating} onShoot={handleShoot} />
-        <BulletRack loadedChambers={loadedChambers} isSpinning={isAnimating} spinId={spinId} />
-      </section>
+      {isDice ? (
+        <DiceBoard />
+      ) : (
+        <>
+          <section className={styles.stage}>
+            <Revolver isLocked={isLocked} isAnimating={isAnimating} onShoot={handleShoot} />
+            <BulletRack loadedChambers={loadedChambers} isSpinning={isAnimating} spinId={spinId} />
+          </section>
 
-      <footer className={styles.bottom}>
-        {showDeath ? null : (
-          <>
-            {isPoker ? (
-              <ResetButton
-                onReset={() => {
-                  addBullet();
-                }}
-                label={
-                  bulletCount >= POKER_CHAMBER_COUNT
-                    ? "Барабан полный"
-                    : `Добавить пулю ${bulletCount}/${POKER_CHAMBER_COUNT}`
-                }
-                disabled={isLocked || isAnimating || bulletCount >= POKER_CHAMBER_COUNT}
-              />
-            ) : null}
-              <ResetButton onReset={handleReset} disabled={isAnimating} />
-          </>
-        )}
-      </footer>
+          <footer className={styles.bottom}>
+            {showDeath ? null : (
+              <>
+                {isPoker ? (
+                  <ResetButton
+                    onReset={() => {
+                      addBullet();
+                    }}
+                    label={
+                      bulletCount >= POKER_CHAMBER_COUNT
+                        ? "Барабан полный"
+                        : `Добавить пулю ${bulletCount}/${POKER_CHAMBER_COUNT}`
+                    }
+                    disabled={isLocked || isAnimating || bulletCount >= POKER_CHAMBER_COUNT}
+                  />
+                ) : null}
+                <ResetButton onReset={handleReset} disabled={isAnimating} />
+              </>
+            )}
+          </footer>
+        </>
+      )}
 
       {showHelp ? (
         <PokerHelp

@@ -6,6 +6,7 @@ import styles from "./mode-switch.module.css";
 const MODES: { id: GameMode; label: string }[] = [
   { id: "liar", label: "Верю не верю" },
   { id: "poker", label: "Покер" },
+  { id: "dice", label: "Кубики" },
 ];
 
 export function ModeSwitch() {

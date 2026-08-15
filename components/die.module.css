@@ -1,0 +1,83 @@
+.die {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  width: 64px;
+  height: 64px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #f3f3f3;
+  box-shadow: 0 2px 0 #c8c8c8;
+  transform-origin: center;
+}
+
+.rolling {
+  animation: tumble 0.95s cubic-bezier(0.18, 0.72, 0.22, 1) both;
+}
+
+.landed {
+  animation: settle 0.28s ease-out both;
+}
+
+@keyframes tumble {
+  0% {
+    transform: translateY(-52px) rotate(-240deg) scale(0.72);
+  }
+
+  45% {
+    transform: translateY(10px) rotate(28deg) scale(1.06);
+  }
+
+  72% {
+    transform: translateY(-7px) rotate(-14deg) scale(0.98);
+  }
+
+  100% {
+    transform: translateY(0) rotate(0deg) scale(1);
+  }
+}
+
+@keyframes settle {
+  from {
+    transform: scale(1.06);
+  }
+
+  to {
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rolling,
+  .landed {
+    animation: none;
+  }
+}
+
+.cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pip::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #161616;
+}
+
+@media (max-height: 420px), (max-width: 700px) {
+  .die {
+    width: 52px;
+    height: 52px;
+    padding: 6px;
+    border-radius: 12px;
+  }
+
+  .pip::after {
+    width: 8px;
+    height: 8px;
+  }
+}

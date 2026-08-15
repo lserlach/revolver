@@ -234,3 +234,45 @@ export async function playSpin(): Promise<number> {
   await unlockSounds();
   return playFile("spin");
 }
+
+function playDiceClack(context: AudioContext, time: number, volume: number): void {
+  const length = Math.floor(context.sampleRate * 0.028);
+  const buffer = context.createBuffer(1, length, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < length; index += 1) {
+    data[index] = (Math.random() * 2 - 1) * Math.pow(1 - index / length, 2.4);
+  }
+
+  const source = context.createBufferSource();
+  const filter = context.createBiquadFilter();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  filter.type = "bandpass";
+  filter.frequency.value = 900 + Math.random() * 1400;
+  filter.Q.value = 1.8;
+  gain.gain.setValueAtTime(0.0001, time);
+  gain.gain.exponentialRampToValueAtTime(Math.max(volume, 0.03), time + 0.004);
+  gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(context.destination);
+  source.start(time);
+}
+
+export async function playDice(): Promise<number> {
+  await unlockSounds();
+  setPlaybackSession();
+  const context = getAudioContext();
+  if (context.state !== "running") {
+    await context.resume();
+  }
+
+  const start = context.currentTime + 0.02;
+  const hits = 11;
+  for (let index = 0; index < hits; index += 1) {
+    const time = start + index * (0.055 + index * 0.01);
+    playDiceClack(context, time, 0.62 - index * 0.04);
+  }
+
+  return 0.95;
+}

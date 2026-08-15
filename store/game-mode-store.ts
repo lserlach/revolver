@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type GameMode = "liar" | "poker";
+export type GameMode = "liar" | "poker" | "dice";
 
 interface GameModeState {
   mode: GameMode;
