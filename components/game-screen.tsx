@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { lockLandscape } from "@/lib/orientation";
 import { playBang, playClick, unlockSounds } from "@/lib/sounds";
 import {
   createLiarShootApi,
@@ -15,7 +14,6 @@ import { BulletRack } from "./bullet-rack";
 import { ConfirmDialog } from "./confirm-dialog";
 import { DeathOverlay } from "./death-overlay";
 import { ModeSwitch } from "./mode-switch";
-import { OrientationGuard } from "./orientation-guard";
 import { PokerHelp } from "./poker-help";
 import { ResetButton } from "./reset-button";
 import { Revolver } from "./revolver";
@@ -106,17 +104,18 @@ export function GameScreen() {
     window.addEventListener("pageshow", onVisible);
 
     const warm = () => {
-      lockLandscape();
       void unlockSounds();
     };
 
-    window.addEventListener("pointerdown", warm, { once: true });
+    document.addEventListener("pointerdown", warm, { capture: true });
+    document.addEventListener("touchstart", warm, { capture: true });
     return () => {
       unsubscribeLiar();
       unsubscribePoker();
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("pageshow", onVisible);
-      window.removeEventListener("pointerdown", warm);
+      document.removeEventListener("pointerdown", warm, { capture: true });
+      document.removeEventListener("touchstart", warm, { capture: true });
     };
   }, []);
 
@@ -148,82 +147,80 @@ export function GameScreen() {
   };
 
   return (
-    <OrientationGuard>
-      <main className={`${styles.table} ${isLocked ? styles.dead : ""}`}>
-        <header className={styles.top}>
-          <ModeSwitch />
-          {isPoker ? (
-            <button
-              className={styles.help}
-              type="button"
-              aria-label="Комбинации покера"
-              onClick={() => {
-                setShowHelp(true);
-              }}
-            >
-              ?
-            </button>
-          ) : null}
-        </header>
-
-        <section className={styles.stage}>
-          <Revolver isLocked={isLocked} isAnimating={isAnimating} onShoot={handleShoot} />
-          <BulletRack loadedChambers={loadedChambers} isSpinning={isAnimating} spinId={spinId} />
-        </section>
-
-        <footer className={styles.bottom}>
-          {showDeath ? null : (
-            <>
-              {isPoker ? (
-                <ResetButton
-                  onReset={() => {
-                    addBullet();
-                  }}
-                  label={
-                    bulletCount >= POKER_CHAMBER_COUNT
-                      ? "Барабан полный"
-                      : `Добавить пулю ${bulletCount}/${POKER_CHAMBER_COUNT}`
-                  }
-                  disabled={isLocked || isAnimating || bulletCount >= POKER_CHAMBER_COUNT}
-                />
-              ) : null}
-              <ResetButton onReset={handleReset} />
-            </>
-          )}
-        </footer>
-
-        {showHelp ? (
-          <PokerHelp
-            onClose={() => {
-              setShowHelp(false);
+    <main className={`${styles.table} ${isLocked ? styles.dead : ""}`}>
+      <header className={styles.top}>
+        <ModeSwitch />
+        {isPoker ? (
+          <button
+            className={styles.help}
+            type="button"
+            aria-label="Комбинации покера"
+            onClick={() => {
+              setShowHelp(true);
             }}
-          />
+          >
+            ?
+          </button>
         ) : null}
+      </header>
 
-        {confirmShot ? (
-          <ConfirmDialog
-            title="Выстрелить?"
-            text="Это нельзя отменить. Шанс зависит от числа пуль в барабане."
-            confirmLabel="Выстрелить"
-            cancelLabel="Отмена"
-            onConfirm={handleConfirmShoot}
-            onCancel={() => {
-              setConfirmShot(false);
-            }}
-          />
-        ) : null}
+      <section className={styles.stage}>
+        <Revolver isLocked={isLocked} isAnimating={isAnimating} onShoot={handleShoot} />
+        <BulletRack loadedChambers={loadedChambers} isSpinning={isAnimating} spinId={spinId} />
+      </section>
 
-        {showDeath ? (
-          <DeathOverlay
-            onReset={handleReset}
-            text={
-              isPoker
-                ? "Шанс не сыграл в твою пользу."
-                : "Боевой патрон оказался в этом слоте."
-            }
-          />
-        ) : null}
-      </main>
-    </OrientationGuard>
+      <footer className={styles.bottom}>
+        {showDeath ? null : (
+          <>
+            {isPoker ? (
+              <ResetButton
+                onReset={() => {
+                  addBullet();
+                }}
+                label={
+                  bulletCount >= POKER_CHAMBER_COUNT
+                    ? "Барабан полный"
+                    : `Добавить пулю ${bulletCount}/${POKER_CHAMBER_COUNT}`
+                }
+                disabled={isLocked || isAnimating || bulletCount >= POKER_CHAMBER_COUNT}
+              />
+            ) : null}
+              <ResetButton onReset={handleReset} disabled={isAnimating} />
+          </>
+        )}
+      </footer>
+
+      {showHelp ? (
+        <PokerHelp
+          onClose={() => {
+            setShowHelp(false);
+          }}
+        />
+      ) : null}
+
+      {confirmShot ? (
+        <ConfirmDialog
+          title="Выстрелить?"
+          text="Это нельзя отменить. Шанс зависит от числа пуль в барабане."
+          confirmLabel="Выстрелить"
+          cancelLabel="Отмена"
+          onConfirm={handleConfirmShoot}
+          onCancel={() => {
+            setConfirmShot(false);
+          }}
+        />
+      ) : null}
+
+      {showDeath ? (
+        <DeathOverlay
+          onReset={handleReset}
+          text={
+            isPoker
+              ? "Шанс не сыграл в твою пользу."
+              : "Боевой патрон оказался в этом слоте."
+          }
+        />
+      ) : null}
+    </main>
   );
 }

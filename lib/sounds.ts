@@ -4,14 +4,13 @@ const SOUND_URLS = {
   spin: "/sounds/spin.mp3",
 } as const;
 
-const SOUND_DURATION: Record<keyof typeof SOUND_URLS, number> = {
+type SoundName = keyof typeof SOUND_URLS;
+
+const SOUND_DURATION: Record<SoundName, number> = {
   click: 2.3,
   bang: 0.86,
   spin: 1.93,
 };
-
-const SILENT_WAV =
-  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA";
 
 interface AudioSessionLike {
   type: string;
@@ -21,9 +20,15 @@ interface NavigatorWithAudioSession extends Navigator {
   audioSession?: AudioSessionLike;
 }
 
-let keepAlive: HTMLAudioElement | null = null;
+type WebkitAudioContext = typeof AudioContext;
+
+let audioContext: AudioContext | null = null;
+let keepAliveSource: AudioBufferSourceNode | null = null;
 let watching = false;
-const templates: Partial<Record<keyof typeof SOUND_URLS, HTMLAudioElement>> = {};
+let htmlUnlocked = false;
+const buffers: Partial<Record<SoundName, AudioBuffer>> = {};
+const htmlPlayers: Partial<Record<SoundName, HTMLAudioElement>> = {};
+let loadingBuffers: Promise<void> | null = null;
 
 function setPlaybackSession(): void {
   const session = (navigator as NavigatorWithAudioSession).audioSession;
@@ -42,51 +47,127 @@ function setPlaybackSession(): void {
   }
 }
 
-function createAudio(url: string, loop = false): HTMLAudioElement {
+function getAudioContext(): AudioContext {
+  if (!audioContext) {
+    const Context =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: WebkitAudioContext }).webkitAudioContext;
+    audioContext = new Context();
+    audioContext.onstatechange = () => {
+      if (audioContext?.state === "running") {
+        return;
+      }
+      if (document.visibilityState === "visible") {
+        setPlaybackSession();
+        void audioContext?.resume();
+      }
+    };
+  }
+  return audioContext;
+}
+
+function createHtmlAudio(url: string): HTMLAudioElement {
   const audio = new Audio(url);
   audio.preload = "auto";
   audio.setAttribute("playsinline", "true");
   audio.setAttribute("webkit-playsinline", "true");
-  audio.loop = loop;
+  audio.muted = false;
   return audio;
 }
 
-function ensureKeepAlive(): HTMLAudioElement {
-  if (!keepAlive) {
-    keepAlive = createAudio(SILENT_WAV, true);
-    keepAlive.volume = 0.01;
-    keepAlive.addEventListener("pause", () => {
-      if (document.visibilityState === "visible") {
-        void keepAlive?.play().catch(() => undefined);
+function ensureHtmlPlayer(key: SoundName): HTMLAudioElement {
+  if (!htmlPlayers[key]) {
+    const audio = createHtmlAudio(SOUND_URLS[key]);
+    audio.load();
+    htmlPlayers[key] = audio;
+  }
+  return htmlPlayers[key];
+}
+
+function startKeepAlive(context: AudioContext): void {
+  if (keepAliveSource) {
+    return;
+  }
+
+  const buffer = context.createBuffer(1, context.sampleRate, context.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let index = 0; index < data.length; index += 1) {
+    data[index] = (Math.random() * 2 - 1) * 0.00005;
+  }
+
+  const source = context.createBufferSource();
+  const gain = context.createGain();
+  source.buffer = buffer;
+  source.loop = true;
+  gain.gain.value = 1;
+  source.connect(gain);
+  gain.connect(context.destination);
+  source.onended = () => {
+    keepAliveSource = null;
+  };
+  source.start();
+  keepAliveSource = source;
+}
+
+async function loadBuffers(context: AudioContext): Promise<void> {
+  if (loadingBuffers) {
+    await loadingBuffers;
+    return;
+  }
+
+  loadingBuffers = Promise.all(
+    (Object.keys(SOUND_URLS) as SoundName[]).map(async (key) => {
+      if (buffers[key]) {
+        return;
       }
+      ensureHtmlPlayer(key);
+      const response = await fetch(SOUND_URLS[key]);
+      const bytes = await response.arrayBuffer();
+      buffers[key] = await context.decodeAudioData(bytes.slice(0));
+    }),
+  )
+    .then(() => undefined)
+    .catch(() => {
+      loadingBuffers = null;
     });
-  }
-  return keepAlive;
+
+  await loadingBuffers;
 }
 
-async function startKeepAlive(): Promise<void> {
-  const audio = ensureKeepAlive();
-  try {
-    await audio.play();
-  } catch {
-    // First gesture will retry via unlockSounds.
+async function warmHtmlPlayers(): Promise<void> {
+  if (htmlUnlocked) {
+    return;
   }
-}
 
-function preloadTemplates(): void {
-  (Object.keys(SOUND_URLS) as Array<keyof typeof SOUND_URLS>).forEach((key) => {
-    if (!templates[key]) {
-      const audio = createAudio(SOUND_URLS[key]);
-      audio.load();
-      templates[key] = audio;
-    }
-  });
+  const results = await Promise.all(
+    (Object.keys(SOUND_URLS) as SoundName[]).map(async (key) => {
+      const audio = ensureHtmlPlayer(key);
+      audio.volume = 0;
+      try {
+        await audio.play();
+        audio.pause();
+        audio.currentTime = 0;
+        audio.volume = 1;
+        return true;
+      } catch {
+        audio.volume = 1;
+        return false;
+      }
+    }),
+  );
+
+  htmlUnlocked = results.some(Boolean);
 }
 
 export async function unlockSounds(): Promise<void> {
   setPlaybackSession();
-  preloadTemplates();
-  await startKeepAlive();
+  const context = getAudioContext();
+  if (context.state !== "running") {
+    await context.resume();
+  }
+  startKeepAlive(context);
+  await warmHtmlPlayers();
+  await loadBuffers(context);
 }
 
 export function watchSoundSession(): void {
@@ -97,31 +178,44 @@ export function watchSoundSession(): void {
   watching = true;
 
   const resume = () => {
+    setPlaybackSession();
     if (document.visibilityState === "hidden") {
       return;
     }
     void unlockSounds();
   };
 
+  document.addEventListener("pointerdown", resume, { capture: true, passive: true });
+  document.addEventListener("touchstart", resume, { capture: true, passive: true });
   document.addEventListener("visibilitychange", resume);
   window.addEventListener("pageshow", resume);
   window.addEventListener("focus", resume);
   window.addEventListener("orientationchange", resume);
 }
 
-function playFile(key: keyof typeof SOUND_URLS): number {
-  setPlaybackSession();
-  void startKeepAlive();
-
-  const audio = createAudio(SOUND_URLS[key]);
+function playHtml(key: SoundName): void {
+  const audio = ensureHtmlPlayer(key);
+  audio.muted = false;
+  audio.volume = 1;
   audio.currentTime = 0;
-  void audio.play().catch(() => {
-    const fallback = templates[key];
-    if (fallback) {
-      fallback.currentTime = 0;
-      void fallback.play().catch(() => undefined);
-    }
-  });
+  void audio.play().catch(() => undefined);
+}
+
+function playFile(key: SoundName): number {
+  setPlaybackSession();
+  const context = getAudioContext();
+  void context.resume();
+  startKeepAlive(context);
+
+  const buffer = buffers[key];
+  if (buffer && context.state === "running") {
+    const source = context.createBufferSource();
+    source.buffer = buffer;
+    source.connect(context.destination);
+    source.start();
+  } else {
+    playHtml(key);
+  }
 
   return SOUND_DURATION[key];
 }

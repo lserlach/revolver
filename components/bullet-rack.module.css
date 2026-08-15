@@ -78,6 +78,27 @@
   }
 }
 
+@media (orientation: portrait) {
+  .rack {
+    width: 148px;
+    height: 148px;
+  }
+
+  .slot {
+    width: 32px;
+    height: 32px;
+    margin: -16px 0 0 -16px;
+    transform: rotate(var(--angle)) translateY(-52px);
+  }
+
+  .wide .slot {
+    width: 26px;
+    height: 26px;
+    margin: -13px 0 0 -13px;
+    transform: rotate(var(--angle)) translateY(-48px);
+  }
+}
+
 @media (max-height: 420px) {
   .rack {
     width: 132px;

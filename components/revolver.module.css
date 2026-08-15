@@ -30,3 +30,15 @@
   display: block;
   pointer-events: none;
 }
+
+@media (orientation: portrait) {
+  .trigger {
+    width: min(92vw, 520px);
+    max-height: 42dvh;
+  }
+
+  .photo {
+    max-height: 42dvh;
+    object-fit: contain;
+  }
+}

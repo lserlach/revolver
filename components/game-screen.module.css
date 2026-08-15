@@ -70,3 +70,15 @@
   gap: 10px;
   padding-bottom: 4px;
 }
+
+@media (orientation: portrait) {
+  .stage {
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .bottom {
+    flex-wrap: wrap;
+    padding-bottom: 8px;
+  }
+}
